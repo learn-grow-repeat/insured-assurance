@@ -1,0 +1,53 @@
+name: Maven Project
+on: push
+jobs:
+  say-hello:
+    name: Say hello
+    runs-on: ubuntu-22.04
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v6
+        
+        - name: Set up java
+          uses: actions/setup-java@v4
+          with:
+            distribution: temurin
+            java-version: "17"
+
+        - name: Build with Maven
+          run: mvn -B clean package
+        
+        - name: Check secrets are present (safe)
+          run: |
+            test -n "${{ secrets.HOST }}" && echo "HOST OK" || (echo "HOST MISSING" && exit 1)
+            test -n "${{ secrets.USERNAME }}" && echo "USERNAME OK" || (echo "USERNAME MISSING" && exit 1)
+            test -n "${{ secrets.PORT }}" && echo "PORT OK" || (echo "PORT MISSING" && exit 1)
+            test -n "${{ secrets.PASSWORD }}" && echo "PASSWORD OK" || (echo "PASSWORD MISSING" && exit 1)
+            
+        - name: scp ssh pipelines - Copy WAR to server
+          uses: appleboy/scp-action@master
+          with:
+            host: ${{secrets.HOST}}
+            username: ${{secrets.USERNAME}}
+            password: ${{secrets.PASSWORD}}
+            port: ${{secrets.PORT}}
+            source: "target/*.jar"
+            target: "/tmp/"
+        - name: Verify JAR copied
+          uses: appleboy/ssh-action@master
+          with:
+            host: ${{secrets.HOST}}
+            username: ${{secrets.USERNAME}}
+            password: ${{secrets.PASSWORD}}
+            port: ${{secrets.PORT}}
+            script: |
+              ls -lart /tmp
+
+
+        - name: Invoke Jenkins deployment job
+          uses: appleboy/jenkins-action@master
+          with:
+            url: "http://${{secrets.HOST}}:8080"
+            user: "admin"
+            token: ${{ secrets.JENKINS_TOKEN}}
+            job: "TomcatDeployment"
