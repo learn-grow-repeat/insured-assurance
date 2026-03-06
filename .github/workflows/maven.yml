@@ -31,9 +31,9 @@ jobs:
             username: ${{secrets.USERNAME}}
             password: ${{secrets.PASSWORD}}
             port: ${{secrets.PORT}}
-            source: "target/*.jar"
+            source: "target/*.war"
             target: "/tmp/"
-        - name: Verify JAR copied
+        - name: Verify WAR copied
           uses: appleboy/ssh-action@master
           with:
             host: ${{secrets.HOST}}
